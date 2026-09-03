@@ -20,7 +20,7 @@ class Prompt:
 
 
 class PromptManager:
-    """프롬프트 등록, 조회, 검색, 즐겨찾기를 관리한다."""
+    """프롬프트 등록, 조회, 수정, 삭제, 검색, 즐겨찾기를 관리한다."""
 
     DATA_FILE = Path(__file__).with_name("prompts.json")
 
@@ -157,6 +157,56 @@ class PromptManager:
         print(f"프롬프트가 등록되었습니다. (ID: {self.next_id})")
         self.next_id += 1
 
+    def edit_prompt(self) -> None:
+        print("\n[프롬프트 수정]")
+        prompt_id = self.read_prompt_id()
+        if prompt_id is None:
+            return
+
+        prompt = self.find_by_id(prompt_id)
+        if prompt is None:
+            print("해당 ID의 프롬프트가 없습니다.")
+            return
+
+        title = input(f"제목 [{prompt.title}]: ").strip()
+        category = input(f"카테고리 [{prompt.category}]: ").strip()
+        content = input(f"프롬프트 내용 [{prompt.content}]: ").strip()
+
+        if title:
+            prompt.title = title
+        if category:
+            prompt.category = category
+        if content:
+            prompt.content = content
+
+        self.save_prompts(self.prompts)
+        print(f"'{prompt.title}' 프롬프트가 수정되었습니다.")
+
+    def delete_prompt(self) -> None:
+        print("\n[프롬프트 삭제]")
+        prompt_id = self.read_prompt_id()
+        if prompt_id is None:
+            return
+
+        prompt = self.find_by_id(prompt_id)
+        if prompt is None:
+            print("해당 ID의 프롬프트가 없습니다.")
+            return
+
+        while True:
+            answer = input(f"'{prompt.title}' 프롬프트를 삭제할까요? (Y/N): ").strip().lower()
+            if answer in {"y", "n"}:
+                break
+            print("Y 또는 N으로 입력해 주세요.")
+
+        if answer == "n":
+            print("삭제를 취소했습니다.")
+            return
+
+        self.prompts.remove(prompt)
+        self.save_prompts(self.prompts)
+        print(f"'{prompt.title}' 프롬프트가 삭제되었습니다.")
+
     def show_all(self) -> None:
         print("\n[전체 프롬프트 목록]")
         self.print_prompt_list(self.prompts)
@@ -256,6 +306,8 @@ class PromptManager:
 5. 상세 보기
 6. 즐겨찾기 등록/해제
 7. 즐겨찾기 목록 보기
+8. 프롬프트 수정
+9. 프롬프트 삭제
 0. 종료
 ============================================================"""
         )
@@ -269,6 +321,8 @@ class PromptManager:
             "5": self.show_detail,
             "6": self.toggle_favorite,
             "7": self.show_favorites,
+            "8": self.edit_prompt,
+            "9": self.delete_prompt,
         }
 
         while True:
@@ -281,7 +335,7 @@ class PromptManager:
 
             action = actions.get(choice)
             if action is None:
-                print("0부터 7까지의 메뉴 번호를 입력해 주세요.")
+                print("0부터 9까지의 메뉴 번호를 입력해 주세요.")
                 continue
 
             action()
