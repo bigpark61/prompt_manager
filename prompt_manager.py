@@ -1,10 +1,11 @@
 """콘솔 기반 프롬프트 관리 프로그램.
 
-추가 프롬프트와 즐겨찾기 상태는 실행 중 메모리에만 유지되며,
-프로그램을 종료하면 기본 데이터로 초기화됩니다.
+프롬프트와 즐겨찾기 상태는 프로그램 폴더의 prompts.json에 저장된다.
 """
 
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -21,8 +22,11 @@ class Prompt:
 class PromptManager:
     """프롬프트 등록, 조회, 검색, 즐겨찾기를 관리한다."""
 
-    def __init__(self) -> None:
-        self.prompts: list[Prompt] = [
+    DATA_FILE = Path(__file__).with_name("prompts.json")
+
+    @staticmethod
+    def default_prompts() -> list[Prompt]:
+        return [
             Prompt(
                 1,
                 "회의자료 핵심 요약",
@@ -46,7 +50,65 @@ class PromptManager:
                 True,
             ),
         ]
-        self.next_id = 4
+
+    def __init__(self) -> None:
+        self.prompts = self.load_prompts()
+        self.next_id = max(
+            (prompt.prompt_id for prompt in self.prompts), default=0
+        ) + 1
+
+    @classmethod
+    def load_prompts(cls) -> list[Prompt]:
+        try:
+            with cls.DATA_FILE.open(encoding="utf-8") as file:
+                data = json.load(file)
+            prompts = [
+                Prompt(
+                    prompt_id=item["prompt_id"],
+                    title=item["title"],
+                    category=item["category"],
+                    content=item["content"],
+                    favorite=item.get("favorite", False),
+                )
+                for item in data
+            ]
+            cls.validate_prompts(prompts, data)
+            return prompts
+        except (OSError, json.JSONDecodeError, TypeError, KeyError, ValueError):
+            prompts = cls.default_prompts()
+            cls.save_prompts(prompts)
+            return prompts
+
+    @staticmethod
+    def validate_prompts(
+        prompts: list[Prompt], data: object
+    ) -> None:
+        if not isinstance(data, list):
+            raise ValueError("프롬프트 데이터는 목록이어야 합니다.")
+        if len({prompt.prompt_id for prompt in prompts}) != len(prompts):
+            raise ValueError("프롬프트 ID가 중복되었습니다.")
+        for prompt, item in zip(prompts, data):
+            if (
+                not isinstance(item, dict)
+                or type(prompt.prompt_id) is not int
+                or prompt.prompt_id < 1
+                or not all(
+                    isinstance(value, str) and value.strip()
+                    for value in (prompt.title, prompt.category, prompt.content)
+                )
+                or type(prompt.favorite) is not bool
+            ):
+                raise ValueError("프롬프트 데이터 형식이 올바르지 않습니다.")
+
+    @classmethod
+    def save_prompts(cls, prompts: list[Prompt]) -> None:
+        with cls.DATA_FILE.open("w", encoding="utf-8") as file:
+            json.dump(
+                [asdict(prompt) for prompt in prompts],
+                file,
+                ensure_ascii=False,
+                indent=2,
+            )
 
     @staticmethod
     def read_nonempty(label: str) -> str:
@@ -91,6 +153,7 @@ class PromptManager:
         self.prompts.append(
             Prompt(self.next_id, title, category, content)
         )
+        self.save_prompts(self.prompts)
         print(f"프롬프트가 등록되었습니다. (ID: {self.next_id})")
         self.next_id += 1
 
@@ -170,6 +233,7 @@ class PromptManager:
             return
 
         prompt.favorite = not prompt.favorite
+        self.save_prompts(self.prompts)
         state = "등록" if prompt.favorite else "해제"
         print(f"'{prompt.title}' 프롬프트의 즐겨찾기가 {state}되었습니다.")
 
