@@ -1,0 +1,30 @@
+# Python이 자동으로 생성하는 캐시 파일
+__pycache__/
+*.py[cod]
+
+# Python 가상환경
+.venv/
+venv/
+env/
+
+# 환경변수 및 비밀정보
+.env
+.env.*
+
+# 테스트 및 분석 도구가 생성하는 파일
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 프로그램 실행 중 생성되는 로그와 임시파일
+*.log
+*.tmp
+*.bak
+
+# 운영체제에서 생성하는 파일
+.DS_Store
+Thumbs.db
+
+# VS Code 개인 설정
+.vscode/
