@@ -1,0 +1,235 @@
+"""콘솔 기반 프롬프트 관리 프로그램.
+
+추가 프롬프트와 즐겨찾기 상태는 실행 중 메모리에만 유지되며,
+프로그램을 종료하면 기본 데이터로 초기화됩니다.
+"""
+
+from dataclasses import dataclass
+
+
+@dataclass
+class Prompt:
+    """프롬프트 한 건의 정보를 표현한다."""
+
+    prompt_id: int
+    title: str
+    category: str
+    content: str
+    favorite: bool = False
+
+
+class PromptManager:
+    """프롬프트 등록, 조회, 검색, 즐겨찾기를 관리한다."""
+
+    def __init__(self) -> None:
+        self.prompts: list[Prompt] = [
+            Prompt(
+                1,
+                "회의자료 핵심 요약",
+                "문서작성",
+                "다음 회의자료를 핵심 내용, 결정사항, 후속 조치로 구분하여 "
+                "5줄 이내로 요약해 주세요.",
+            ),
+            Prompt(
+                2,
+                "행사 참석 안내문 작성",
+                "행사운영",
+                "다음 행사 정보를 바탕으로 목적, 일시, 장소, 주요 내용, "
+                "참가 방법이 포함된 정중한 참석 안내문을 작성해 주세요.",
+            ),
+            Prompt(
+                3,
+                "제조 데이터 이상 원인 분석",
+                "제조AI",
+                "다음 설비 데이터와 알람 이력을 분석하여 가능한 이상 원인, "
+                "확인 항목, 권장 조치를 우선순위 순으로 제시해 주세요.",
+                True,
+            ),
+        ]
+        self.next_id = 4
+
+    @staticmethod
+    def read_nonempty(label: str) -> str:
+        """공백이 아닌 문자열을 입력받는다."""
+        while True:
+            value = input(label).strip()
+            if value:
+                return value
+            print("빈 내용은 입력할 수 없습니다.")
+
+    def find_by_id(self, prompt_id: int) -> Prompt | None:
+        return next(
+            (prompt for prompt in self.prompts if prompt.prompt_id == prompt_id),
+            None,
+        )
+
+    @staticmethod
+    def print_summary(prompt: Prompt) -> None:
+        favorite_mark = "★" if prompt.favorite else "☆"
+        print(
+            f"{prompt.prompt_id:>3} | {favorite_mark} | "
+            f"{prompt.category:<10} | {prompt.title}"
+        )
+
+    def print_prompt_list(self, prompts: list[Prompt]) -> None:
+        if not prompts:
+            print("조회된 프롬프트가 없습니다.")
+            return
+
+        print("\n ID | 즐겨찾기 | 카테고리   | 제목")
+        print("-" * 60)
+        for prompt in prompts:
+            self.print_summary(prompt)
+        print(f"\n총 {len(prompts)}개")
+
+    def add_prompt(self) -> None:
+        print("\n[프롬프트 추가]")
+        title = self.read_nonempty("제목: ")
+        category = self.read_nonempty("카테고리: ")
+        content = self.read_nonempty("프롬프트 내용: ")
+
+        self.prompts.append(
+            Prompt(self.next_id, title, category, content)
+        )
+        print(f"프롬프트가 등록되었습니다. (ID: {self.next_id})")
+        self.next_id += 1
+
+    def show_all(self) -> None:
+        print("\n[전체 프롬프트 목록]")
+        self.print_prompt_list(self.prompts)
+
+    def show_by_category(self) -> None:
+        print("\n[카테고리별 조회]")
+        categories = sorted({prompt.category for prompt in self.prompts})
+        for index, category in enumerate(categories, start=1):
+            count = sum(p.category == category for p in self.prompts)
+            print(f"{index}. {category} ({count}개)")
+
+        category = input("조회할 카테고리명 또는 번호: ").strip()
+        if category.isdigit():
+            index = int(category) - 1
+            if not 0 <= index < len(categories):
+                print("존재하지 않는 카테고리 번호입니다.")
+                return
+            category = categories[index]
+
+        results = [
+            prompt
+            for prompt in self.prompts
+            if prompt.category.casefold() == category.casefold()
+        ]
+        self.print_prompt_list(results)
+
+    def search_prompts(self) -> None:
+        print("\n[프롬프트 검색]")
+        keyword = self.read_nonempty("검색어: ").casefold()
+        results = [
+            prompt
+            for prompt in self.prompts
+            if keyword in prompt.title.casefold()
+            or keyword in prompt.category.casefold()
+            or keyword in prompt.content.casefold()
+        ]
+        self.print_prompt_list(results)
+
+    def read_prompt_id(self) -> int | None:
+        value = input("프롬프트 ID: ").strip()
+        if not value.isdigit():
+            print("ID는 숫자로 입력해 주세요.")
+            return None
+        return int(value)
+
+    def show_detail(self) -> None:
+        print("\n[프롬프트 상세 보기]")
+        prompt_id = self.read_prompt_id()
+        if prompt_id is None:
+            return
+
+        prompt = self.find_by_id(prompt_id)
+        if prompt is None:
+            print("해당 ID의 프롬프트가 없습니다.")
+            return
+
+        print("-" * 60)
+        print(f"ID       : {prompt.prompt_id}")
+        print(f"제목     : {prompt.title}")
+        print(f"카테고리 : {prompt.category}")
+        print(f"즐겨찾기 : {'등록됨 ★' if prompt.favorite else '등록 안 됨 ☆'}")
+        print(f"내용     : {prompt.content}")
+        print("-" * 60)
+
+    def toggle_favorite(self) -> None:
+        print("\n[즐겨찾기 등록/해제]")
+        prompt_id = self.read_prompt_id()
+        if prompt_id is None:
+            return
+
+        prompt = self.find_by_id(prompt_id)
+        if prompt is None:
+            print("해당 ID의 프롬프트가 없습니다.")
+            return
+
+        prompt.favorite = not prompt.favorite
+        state = "등록" if prompt.favorite else "해제"
+        print(f"'{prompt.title}' 프롬프트의 즐겨찾기가 {state}되었습니다.")
+
+    def show_favorites(self) -> None:
+        print("\n[즐겨찾기 목록]")
+        favorites = [prompt for prompt in self.prompts if prompt.favorite]
+        self.print_prompt_list(favorites)
+
+    @staticmethod
+    def print_menu() -> None:
+        print(
+            """
+============================================================
+                 프롬프트 관리 프로그램
+============================================================
+1. 프롬프트 추가
+2. 전체 목록 보기
+3. 카테고리별 조회
+4. 프롬프트 검색
+5. 상세 보기
+6. 즐겨찾기 등록/해제
+7. 즐겨찾기 목록 보기
+0. 종료
+============================================================"""
+        )
+
+    def run(self) -> None:
+        actions = {
+            "1": self.add_prompt,
+            "2": self.show_all,
+            "3": self.show_by_category,
+            "4": self.search_prompts,
+            "5": self.show_detail,
+            "6": self.toggle_favorite,
+            "7": self.show_favorites,
+        }
+
+        while True:
+            self.print_menu()
+            choice = input("메뉴 번호를 선택하세요: ").strip()
+
+            if choice == "0":
+                print("프로그램을 종료합니다. 이용해 주셔서 감사합니다.")
+                return
+
+            action = actions.get(choice)
+            if action is None:
+                print("0부터 7까지의 메뉴 번호를 입력해 주세요.")
+                continue
+
+            action()
+            input("\nEnter 키를 누르면 메뉴로 돌아갑니다...")
+
+
+def main() -> None:
+    try:
+        PromptManager().run()
+    except (KeyboardInterrupt, EOFError):
+        print("\n프로그램을 종료합니다.")
+
+
+if __name__ == "__main__":
+    main()
