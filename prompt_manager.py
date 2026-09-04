@@ -140,7 +140,8 @@ class PromptManager:
 
         print("\n ID | 즐겨찾기 | 카테고리   | 제목")
         print("-" * 60)
-        for prompt in prompts:
+        sorted_prompts = sorted(prompts, key=lambda prompt: prompt.title.casefold())
+        for prompt in sorted_prompts:
             self.print_summary(prompt)
         print(f"\n총 {len(prompts)}개")
 
