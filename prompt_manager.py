@@ -207,7 +207,7 @@ class PromptManager:
         self.save_prompts(self.prompts)
         print(f"'{prompt.title}' 프롬프트가 삭제되었습니다.")
 
-    def show_all(self) -> None:
+    def show_list(self) -> None:
         print("\n[전체 프롬프트 목록]")
         self.print_prompt_list(self.prompts)
 
@@ -233,7 +233,7 @@ class PromptManager:
         ]
         self.print_prompt_list(results)
 
-    def search_prompts(self) -> None:
+    def search_prompt(self) -> None:
         print("\n[프롬프트 검색]")
         keyword = self.read_nonempty("검색어: ").casefold()
         results = [
@@ -293,7 +293,7 @@ class PromptManager:
         self.print_prompt_list(favorites)
 
     @staticmethod
-    def print_menu() -> None:
+    def show_menu() -> None:
         print(
             """
 ============================================================
@@ -312,28 +312,30 @@ class PromptManager:
 ============================================================"""
         )
 
-    def run(self) -> None:
+    def get_action(self, choice: str):
         actions = {
             "1": self.add_prompt,
-            "2": self.show_all,
+            "2": self.show_list,
             "3": self.show_by_category,
-            "4": self.search_prompts,
+            "4": self.search_prompt,
             "5": self.show_detail,
             "6": self.toggle_favorite,
             "7": self.show_favorites,
             "8": self.edit_prompt,
             "9": self.delete_prompt,
         }
+        return actions.get(choice)
 
+    def run(self) -> None:
         while True:
-            self.print_menu()
+            self.show_menu()
             choice = input("메뉴 번호를 선택하세요: ").strip()
 
             if choice == "0":
                 print("프로그램을 종료합니다. 이용해 주셔서 감사합니다.")
                 return
 
-            action = actions.get(choice)
+            action = self.get_action(choice)
             if action is None:
                 print("0부터 9까지의 메뉴 번호를 입력해 주세요.")
                 continue
